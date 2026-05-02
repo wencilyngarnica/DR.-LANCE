@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Instructor - AI University Assistant</title>
+    <style>
+        /* WCAG Compliant Color Scheme - High Contrast */
+        :root {
+            --primary-bg: #1a1a2e;
+            --secondary-bg: #16213e;
+            --chat-bg: #0f3460;
+            --text-light: #ffffff;
+            --text-dark: #e0e0e0;
+            --accent: #4a9eff;
+            --accent-hover: #6bb5ff;
+            --error: #ff6b6b;
+            --success: #51cf66;
+            --border: #2d4059;
+            --focus-ring: #ffd93d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+            min-height: 100vh;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* Skip to main content link - WCAG requirement */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            z-index: 100;
+            border-radius: 4px;
+            transition: top 0.3s;
+        }
+
+        .skip-link:focus {
+            top: 10px;
+            outline: 3px solid var(--focus-ring);
+        }
+
+        /* Main container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Chat container */
+        .chat-container {
+            flex: 1;
+            background: var(--chat-bg);
+            border-radius: 12px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            scroll-behavior: smooth;
+        }
+
+        /* Message styles */
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            text-align: left;
+        }
+
+        .user .message-content {
+            background: var(--accent);
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .assistant .message-content {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .message-role {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            opacity: 0.8;
+            display: block;
+        }
+
+        /* Input area */
+        .input-area {
+            background: var(--secondary-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border);
+            color: var(--text-light);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.3);
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        button:focus {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+        }
+
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Code blocks */
+        pre {
+            background: #1e1e1e;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* WCAG focus indicators */
+        *:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .message-content {
+                max-width: 95%;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 1.4rem;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --primary-bg: #000000;
+                --secondary-bg: #000000;
+                --chat-bg: #111111;
+                --border: #ffffff;
+            }
+            
+            .message-content {
+                border: 1px solid white;
+            }
+        }
+
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-container::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+            border-radius: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        .error-message {
+            color: var(--error);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to main content link for keyboard navigation -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div class="container">
+        <header role="banner">
+            <h1>
+                🎓 Ollama Instructor
+                <span class="badge" aria-label="Status: Professor AI">Professor AI</span>
+            </h1>
+            <div class="status">
+                <span class="status-dot" aria-label="Connected"></span>
+                <span>Connected to Ollama • Ready to help</span>
+            </div>
+            <p id="status-description" class="sr-only">System is ready and waiting for your questions</p>
+        </header>
+
+        <!-- Main chat area -->
+        <main id="main-content" role="main" aria-label="Chat conversation">
+            <div class="chat-container" id="chatContainer" role="log" aria-live="polite">
+                <div class="message assistant">
+                    <div class="message-content">
+                        <span class="message-role" aria-label="Assistant message">🎓 Professor Ollama</span>
+                        <p>Hello! I'm Professor Ollama, your AI instructor. I'm here to help you learn and understand any topic. Feel free to ask me questions about anything - from science and mathematics to programming and philosophy. I'll provide clear, accurate answers with sources when possible. What would you like to learn today?</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Input area -->
+        <div class="input-area">
+            <form id="chatForm" aria-label="Chat input form">
+                <div class="input-group">
+                    <label for="userInput" class="sr-only">Your question</label>
+                    <textarea 
+                        id="userInput" 
+                        placeholder="Type your question here... (Press Ctrl+Enter or Cmd+Enter to send)"
+                        aria-label="Your question for Professor Ollama"
+                        rows="3"
+                    ></textarea>
+                    <button type="submit" id="sendButton" aria-label="Send message">
+                        Send Question
+                    </button>
+                </div>
+                <div id="errorMessage" class="error-message" role="alert" aria-live="assertive"></div>
+            </form>
+            <div style="font-size: 0.8rem; margin-top: 8px; opacity: 0.7;" aria-label="Keyboard shortcuts">
+                💡 Tip: Press Ctrl+Enter or ⌘+Enter to send
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const OLLAMA_API_URL = 'http://localhost:11434/api/generate';
+        const MODEL_NAME = 'ollama-instructor';
+
+        // DOM Elements
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatForm = document.getElementById('chatForm');
+        const errorDiv = document.getElementById('errorMessage');
+
+        let isLoading = false;
+
+        // Add message to chat
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.setAttribute('role', 'article');
+            messageDiv.setAttribute('aria-label', `${role === 'user' ? 'Your question' : 'Professor Ollama\'s response'}`);
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            const roleSpan = document.createElement('span');
+            roleSpan.className = 'message-role';
+            roleSpan.textContent = role === 'user' ? '👤 You' : '🎓 Professor Ollama';
+            
+            // Parse markdown-like syntax for code blocks and lists
+            let formattedContent = content;
+            
+            // Basic formatting for better readability
+            formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            formattedContent = formattedContent.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            formattedContent = formattedContent.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // Convert line breaks
+            formattedContent = formattedContent.replace(/\n/g, '<br>');
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = formattedContent;
+            
+            messageContent.appendChild(roleSpan);
+            messageContent.appendChild(contentDiv);
+            messageDiv.appendChild(messageContent);
+            
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Add loading indicator
+        function addLoadingIndicator() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.id = 'loadingIndicator';
+            loadingDiv.setAttribute('aria-label', 'Professor Ollama is thinking');
+            
+            const loadingContent = document.createElement('div');
+            loadingContent.className = 'message-content';
+            
+            const loadingHtml = `
+                <span class="message-role">🎓 Professor Ollama</span>
+                <div class="loading">
+                    <span>Thinking</span>
+                    <div class="loading-dots">
+                        <span>.</span><span>.</span><span>.</span>
+                    </div>
+                </div>
+            `;
+            
+            loadingContent.innerHTML = loadingHtml;
+            loadingDiv.appendChild(loadingContent);
+            chatContainer.appendChild(loadingDiv);
+            scrollToBottom();
+        }
+
+        // Remove loading indicator
+        function removeLoadingIndicator() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Show error message
+        function showError(message) {
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.textContent = '';
+            }, 5000);
+        }
+
+        // Send message to Ollama
+        async function sendToOllama(userMessage) {
+            try {
+                const response = await fetch(OLLAMA_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: MODEL_NAME,
+                        prompt: userMessage,
+                        stream: true,
+                        options: {
+                            temperature: 0.7,
+                            top_p: 0.9,
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.response) {
+                                    fullResponse += data.response;
+                                    // Update the loading indicator with partial response
+                                    updatePartialResponse(fullResponse);
+                                }
+                                if (data.done) {
+                                    console.log('Response complete');
+                                }
+                            } catch (e) {
+                                console.error('Error parsing JSON:', e);
+                            }
+                        }
+                    }
+                }
+                
+                return fullResponse;
+            } catch (error) {
+                console.error('Error calling Ollama API:', error);
+                throw new Error('Failed to connect to Ollama. Make sure Ollama is running and the model is loaded.');
+            }
+        }
+
+        // Update partial response (streaming)
+        function updatePartialResponse(content) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            if (loadingIndicator) {
+                const messageContent = loadingIndicator.querySelector('.message-content');
+                const contentDiv = messageContent.querySelector('div:not(.message-role)');
+                
+                if (!contentDiv) {
+                    // Create content div if it doesn't exist
+                    const newContentDiv = document.createElement('div');
+                    
+                    let formattedContent = content.replace(/\n/g, '<br>');
+                    newContentDiv.innerHTML = formattedContent;
+                    messageContent.appendChild(newContentDiv);
+                } else {
+                    let formattedContent = content.replace(/\n/g, '<br>');
+                    contentDiv.innerHTML = formattedContent;
+                }
+                scrollToBottom();
+            }
+        }
+
+        // Handle form submission
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            const message = userInput.value.trim();
+            if (!message) {
+                showError('Please enter a question first.');
+                return;
+            }
+            
+            if (isLoading) {
+                showError('Please wait for the current response to complete.');
+                return;
+            }
+            
+            // Clear error and input
+            errorDiv.textContent = '';
+            userInput.value = '';
+            
+            // Add user message
+            addMessage('user', message);
+            
+            // Show loading indicator
+            isLoading = true;
+            sendButton.disabled = true;
+            addLoadingIndicator();
+            
+            try {
+                // Send to Ollama and get response
+                const response = await sendToOllama(message);
+                
+                // Remove loading indicator
+                removeLoadingIndicator();
+                
+                // Add assistant response
+                if (response) {
+                    addMessage('assistant', response);
+                } else {
+                    addMessage('assistant', 'I apologize, but I encountered an issue generating a response. Could you please rephrase your question?');
+                }
+            } catch (error) {
+                removeLoadingIndicator();
+                showError(error.message);
+                addMessage('assistant', 'I apologize, but I\'m having trouble connecting to my knowledge base. Please make sure Ollama is running with the command: `ollama serve`. Also ensure the model is loaded with `ollama run ollama-instructor`.');
+            } finally {
+                isLoading = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        }
+        
+        // Keyboard shortcuts
+        userInput.addEventListener('keydown', (event) => {
+            // Ctrl+Enter or Cmd+Enter to submit
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                handleSubmit(event);
+            }
+        });
+        
+        chatForm.addEventListener('submit', handleSubmit);
+        
+        // Focus input on load
+        userInput.focus();
+        
+        // Check if Ollama is running (optional)
+        async function checkOllamaStatus() {
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (response.ok) {
+                    console.log('Ollama is running');
+                }
+            } catch (error) {
+                console.warn('Ollama may not be running:', error);
+                addMessage('assistant', '⚠️ **Connection Notice**: I don\'t detect Ollama running on your system. Please start Ollama with `ollama serve` in your terminal, then refresh this page. Once connected, I\'ll be ready to help!');
+            }
+        }
+        
+        // Check status after page loads
+        setTimeout(checkOllamaStatus, 1000);
+    </script>
+</body>
+</html>

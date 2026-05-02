@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Ollama create command",
+			"type": "shell",
+			"command": "ollama create ollama-instructor -f ./Modelfile",
+			"isBackground": false
+		}
+	]
+}
