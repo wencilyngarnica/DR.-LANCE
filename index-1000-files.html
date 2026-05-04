@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Ollama - 1000+ Text Files Knowledge Base</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: #4a9eff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .stat-card {
+            background: rgba(74, 158, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 8px;
+        }
+
+        .chat-container {
+            flex: 1;
+            background: #0f3460;
+            border-radius: 12px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            text-align: left;
+        }
+
+        .user .message-content {
+            background: #4a9eff;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .assistant .message-content {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .message-role {
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        .source-info {
+            font-size: 0.7rem;
+            margin-top: 5px;
+            opacity: 0.6;
+            font-family: monospace;
+        }
+
+        .input-area {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #2d4059;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #6bb5ff;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .message-content {
+                max-width: 95%;
+            }
+            .input-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                🎓 Professor Ollama
+                <span class="badge">📚 1000+ Text Files</span>
+            </h1>
+            <div class="stats" id="stats">
+                Loading statistics...
+            </div>
+        </header>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <div class="message-content">
+                    <div class="message-role">🎓 Professor Ollama</div>
+                    <div>Hello! I have access to <strong id="fileCount">thousands</strong> of text files as my knowledge base. Ask me anything, and I'll search through all the documents to find the best answer!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <form id="chatForm">
+                <div class="input-group">
+                    <textarea 
+                        id="userInput" 
+                        placeholder="Type your question here... (Press Ctrl+Enter to send)"
+                        rows="3"
+                    ></textarea>
+                    <button type="submit" id="sendButton">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let isLoading = false;
+        
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatForm = document.getElementById('chatForm');
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const stats = await response.json();
+                const statsDiv = document.getElementById('stats');
+                statsDiv.innerHTML = `
+                    <div class="stat-card">📄 ${stats.total_files} Text Files</div>
+                    <div class="stat-card">📂 ${Object.keys(stats.categories).length} Categories</div>
+                    <div class="stat-card">💾 ${stats.total_size_mb.toFixed(2)} MB Total</div>
+                `;
+                document.getElementById('fileCount').textContent = stats.total_files;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function addMessage(role, content, source = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            const roleSpan = document.createElement('div');
+            roleSpan.className = 'message-role';
+            roleSpan.textContent = role === 'user' ? '👤 You' : '🎓 Professor Ollama';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+            
+            messageContent.appendChild(roleSpan);
+            messageContent.appendChild(contentDiv);
+            
+            if (source) {
+                const sourceSpan = document.createElement('div');
+                sourceSpan.className = 'source-info';
+                sourceSpan.textContent = `📁 Source: ${source}`;
+                messageContent.appendChild(sourceSpan);
+            }
+            
+            messageDiv.appendChild(messageContent);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addLoadingIndicator() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.id = 'loadingIndicator';
+            
+            const loadingContent = document.createElement('div');
+            loadingContent.className = 'message-content';
+            loadingContent.innerHTML = `
+                <div class="message-role">🎓 Professor Ollama</div>
+                <div class="loading"></div>
+                <div style="margin-top: 5px;">Searching through ${document.getElementById('fileCount')?.textContent || 'all'} text files...</div>
+            `;
+            
+            loadingDiv.appendChild(loadingContent);
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeLoadingIndicator() {
+            const indicator = document.getElementById('loadingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function sendMessage(message) {
+            if (!message || isLoading) return;
+            
+            isLoading = true;
+            sendButton.disabled = true;
+            userInput.value = '';
+            
+            addMessage('user', message);
+            addLoadingIndicator();
+            
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: message })
+                });
+                
+                const data = await response.json();
+                removeLoadingIndicator();
+                
+                const source = data.source || (data.from_kb ? 'Knowledge Base' : data.from_memory ? 'Memory' : 'AI');
+                addMessage('assistant', data.response, source);
+                
+            } catch (error) {
+                removeLoadingIndicator();
+                addMessage('assistant', `Error: ${error.message}. Make sure the server is running!`);
+            } finally {
+                isLoading = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage(userInput.value.trim());
+        });
+        
+        userInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage(userInput.value.trim());
+            }
+        });
+        
+        // Initialize
+        loadStats();
+        userInput.focus();
+        
+        // Refresh stats every 30 seconds
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>
